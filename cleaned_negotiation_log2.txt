@@ -1,0 +1,29 @@
+Logging to: output_20260429_015025.txt
+
+Available scenarios:
+[1] USA-Iran Nuclear Negotiations
+[2] TechCorp Acquisition
+
+Loading: USA-Iran Nuclear Negotiations
+
+************************************************************
+NEGOTIATION: USA-Iran Nuclear Negotiations
+Mediator: Pakistan
+************************************************************
+🤖 Agent Started
+
+Agent: Negotiator representing USA
+
+Task: You are opening the negotiation on behalf of USA.
+
+Read the current state of the negotiation carefully:
+[LEDGER T0] Agreed: none | Open: enrichment cap percentage, inspection rights and frequency, sanctions relief timeline,
+centrifuge dismantlement | Deadlocks: 0 | Status: in_progress
+
+Make your opening offer. Be clear and specific. State:
+1. Your position on each open issue
+2. What you are willing to discuss
+3. What is non-negotiable for you
+
+Keep your response under 150 words. Be firm but diplomatic.
+
