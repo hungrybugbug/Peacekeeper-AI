@@ -37,7 +37,7 @@ def clean_terminal_output(input_file, output_file):
 
 # Run the function
 # Replace 'output_20260429_010402.txt' with your actual file name
-input_filename = 'output_3.txt'
-output_filename = 'cleaned_negotiation_log3.txt'
+input_filename = 'output_4.txt'
+output_filename = 'cleaned_negotiation_log4.txt'
 
 clean_terminal_output(input_filename, output_filename)

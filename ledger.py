@@ -96,6 +96,16 @@ class AgreementLedger:
     def all_issues_resolved(self) -> bool:
         """Returns True when open_issues is empty."""
         return len(self.open_issues) == 0
+    
+    def get_last_offer(self, party: str) -> str | None:
+        """
+        Reads directly from history — always returns the actual
+        last offer, never a stale sanitized version.
+        """
+        for entry in reversed(self.history):
+            if entry["party"] == party:
+                return entry["offer"]
+        return None
 
 
     def to_context_string(self) -> str:
@@ -117,9 +127,6 @@ AGREED POINTS:
 
 OPEN ISSUES:
 {open_i}
-
-LAST OFFER ({self.party_a_name}): {self.last_offer_a or 'None yet'}
-LAST OFFER ({self.party_b_name}): {self.last_offer_b or 'None yet'}
 
 TRADE-OFF ON TABLE: {self.trade_off_proposed or 'None'}
 =========================================

@@ -34,40 +34,54 @@ def make_counter_offer_task(
     party_name: str,
     other_party_name: str,
     incoming_offer: str,
-    mediator_instruction: str = None,   # NEW parameter
+    mediator_instruction: str = None,
 ) -> Task:
-    
+
+    # Build mediator block with clear priority — no contradiction
     mediator_block = ""
     if mediator_instruction:
         mediator_block = (
-            f"\nCRITICAL — THE MEDIATOR HAS GIVEN YOU A DIRECT INSTRUCTION:\n"
-            f"\"{mediator_instruction}\"\n"
-            f"You MUST explicitly acknowledge this instruction and either:\n"
-            f"  a) Accept it and adjust your position accordingly, OR\n"
-            f"  b) Reject it with a specific reason and propose an alternative\n"
-            f"Ignoring the mediator is not acceptable.\n"
+            f"\nTHE MEDIATOR HAS PROPOSED: \"{mediator_instruction}\"\n"
+            f"Priority order for your response:\n"
+            f"  FIRST — address the mediator's proposal directly\n"
+            f"  SECOND — respond to the incoming offer below\n"
+            f"  If the mediator's proposal conflicts with your red lines,\n"
+            f"  you MUST HOLD your red line, but you MUST offer a significant concession\n"
+            f"  on a DIFFERENT open issue to compensate.\n"
+            f"  Example: 'I cannot accept 6% (red line is 5%), but I will accept your 30-day timeline.'\n"
         )
+
+    # Build a concise history of last 2 turns so agent sees the trajectory
+    recent = ledger.history[-4:] if len(ledger.history) >= 4 else ledger.history
+    trajectory = ""
+    if recent:
+        lines = []
+        for entry in recent:
+            speaker = entry["party"].upper()
+            preview = entry["offer"][:80].replace("\n", " ")
+            lines.append(f"  Turn {entry['turn']} {speaker}: {preview}...")
+        trajectory = "\nRECENT TRAJECTORY (last 2 turns):\n" + "\n".join(lines)
 
     return Task(
         description=(
-            f"You are negotiating on behalf of {party_name}.\n\n"
-            f"Current negotiation state:\n"
-            f"{ledger.to_compact_context()}\n\n"
-            f"The mediator passed you this sanitized offer from {other_party_name}:\n"
-            f"\"{incoming_offer}\"\n"
+            f"You are negotiating on behalf of {party_name}.\n"
+            f"{ledger.to_compact_context()}\n"
+            f"{trajectory}\n"
             f"{mediator_block}\n"
-            f"Your response MUST:\n"
-            f"  1. Explicitly acknowledge the mediator's trade-off if one exists\n"
-            f"  2. Accept points you can concede — do NOT restate settled points\n"
-            f"  3. Push back ONLY on genuinely disputed points with a new number or term\n"
-            f"  4. Show movement — repeating your last position exactly is not allowed\n"
-            f"  5. NEVER restate anything already in AGREED POINTS\n\n"
-            f"Keep your response under 80 words. Show concrete movement."
+            f"Latest offer from {other_party_name}:\n"
+            f"\"{incoming_offer}\"\n\n"
+            f"RULES — follow in this exact order:\n"
+            f"  1. Acknowledge mediator proposal if one exists\n"
+            f"  2. Accept any point you can genuinely concede\n"
+            f"  3. On disputed points — you must make a concession to advance the deal.\n"
+            f"     You can hold firm on ONE issue only if you make a major move toward the\n"
+            f"     other party on another issue. NEVER move backwards (away from their position).\n"
+            f"  4. Never restate an already agreed point as a demand\n"
+            f"  5. Under 80 words. Specific numbers only — no vague language."
         ),
         expected_output=(
-            f"A response from {party_name} that acknowledges the mediator's "
-            f"instruction, shows movement on at least one point, and proposes "
-            f"a concrete updated position. Under 80 words."
+            f"A response under 80 words with specific numbers showing "
+            f"movement toward settlement. No restating of agreed points."
         ),
         agent=agent,
     )
@@ -81,18 +95,28 @@ def mediate_task(
     offer_a: str,
     offer_b: str,
 ) -> Task:
-    """
-    Mediator runs after both parties have spoken each turn.
-    It sanitizes, finds agreement, detects deadlock, and
-    produces a structured update the system can parse.
-    """
+
+    # Only allow deadlock declaration after turn 3
     deadlock_instruction = ""
-    if ledger.is_deadlocked(threshold=2):
+    if ledger.turn < 2:
         deadlock_instruction = (
-            f"\n\nIMPORTANT: You have detected a deadlock "
-            f"({ledger.deadlock_count} turns without movement). "
-            f"You MUST propose a creative win-win trade-off that neither "
-            f"party has suggested. Explain why it serves both sides."
+            f"\nDEADLOCK RULE: This is Turn {ledger.turn}. "
+            f"It is too early to declare a deadlock. "
+            f"Parties have just begun. DEADLOCK must be NO this turn.\n"
+        )
+    elif ledger.is_deadlocked(threshold=2):
+        deadlock_instruction = (
+            f"\nDEADLOCK DETECTED: Both parties have repeated the same "
+            f"position for {ledger.deadlock_count} consecutive turns. "
+            f"You MUST declare DEADLOCK: YES and propose a trade-off "
+            f"that neither party suggested. Explain why it serves both.\n"
+        )
+    else:
+        deadlock_instruction = (
+            f"\nDEADLOCK CHECK: Only declare DEADLOCK: YES if both parties "
+            f"stated the exact same position as their previous turn on the "
+            f"same issue. Partial movement on any issue means NO deadlock. "
+            f"When in doubt, declare NO.\n"
         )
 
     return Task(
@@ -102,34 +126,27 @@ def mediate_task(
             f"{ledger.to_context_string()}\n\n"
             f"{party_a_name} said:\n\"{offer_a}\"\n\n"
             f"{party_b_name} said:\n\"{offer_b}\"\n\n"
+            f"{deadlock_instruction}\n"
             f"Your job this turn:\n"
             f"  1. SANITIZE: Restate each party's core proposal without "
-            f"     any emotional language or ultimatums\n"
-            f"  2. FIND AGREEMENT: Identify any point both parties have "
-            f"     accepted — even partially\n"
-            f"  3. SUMMARIZE THE GAP: State clearly what is still disputed\n"
-            f"  4. CHECK DEADLOCK — THIS IS MANDATORY, NOT OPTIONAL:\n"
-            f"     Compare the current offers to the previous turn's offers stored "
-            f"     in the ledger. If either party's position on ANY open issue has "
-            f"     not changed numerically, that is a deadlock. Declare it. "
-            f"     You do not have the option to 'hope' positions will change. "
-            f"     If positions are the same as last turn — DEADLOCK: YES.\n"
-            f"  5. CHECK SETTLEMENT: Are all open issues now resolved?\n"
-            f"{deadlock_instruction}\n\n"
-            f"You MUST end your response with this exact structured block "
-            f"so the system can update the ledger:\n\n"
+            f"     emotional language\n"
+            f"  2. FIND AGREEMENT: Identify any point both parties accepted\n"
+            f"  3. SUMMARIZE THE GAP: What is still disputed and by how much\n"
+            f"  4. DEADLOCK CHECK: Follow the rule above exactly\n"
+            f"  5. SETTLEMENT CHECK: Are all open issues resolved?\n\n"
+            f"End with this exact block:\n\n"
             f"---LEDGER UPDATE---\n"
-            f"NEW_AGREEMENT: <point that is now agreed, or NONE>\n"
+            f"NEW_AGREEMENT: <agreed point or NONE>\n"
             f"DEADLOCK: <YES or NO>\n"
-            f"TRADE_OFF: <your proposed trade-off, or NONE>\n"
+            f"TRADE_OFF: <trade-off proposal or NONE>\n"
             f"SETTLEMENT: <YES or NO>\n"
-            f"SANITIZED_A: <your sanitized version of {party_a_name}'s offer>\n"
-            f"SANITIZED_B: <your sanitized version of {party_b_name}'s offer>\n"
+            f"SANITIZED_A: <sanitized version of {party_a_name}'s offer>\n"
+            f"SANITIZED_B: <sanitized version of {party_b_name}'s offer>\n"
             f"---END UPDATE---"
         ),
         expected_output=(
-            "A mediator summary followed by a structured LEDGER UPDATE block "
-            "with all six fields filled in exactly as specified."
+            "A mediator analysis followed by the structured LEDGER UPDATE block "
+            "with all six fields filled exactly as specified."
         ),
         agent=agent,
     )

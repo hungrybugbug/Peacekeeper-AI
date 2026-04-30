@@ -134,8 +134,8 @@ class NegotiationCrew:
 
             # Use sanitized versions from mediator as inputs
             # Falls back to raw if parser missed them
-            input_for_b = parsed.get("sanitized_a") or self.ledger.last_offer_a
-            input_for_a = parsed.get("sanitized_b") or self.ledger.last_offer_b
+            input_for_a = self.ledger.get_last_offer("b")  # A responds to B's actual last offer
+             
 
             # Party A responds to B's last sanitized offer
             task_a = make_counter_offer_task(
@@ -146,7 +146,9 @@ class NegotiationCrew:
             offer_a = self._run_single_agent(task_a)
             self.ledger.record_offer("a", offer_a)
             self._log(party_a_name, offer_a)
-
+            
+            input_for_b = self.ledger.get_last_offer("a")    
+            
             # Party B responds to A's last sanitized offer
             task_b = make_counter_offer_task(
                 self.party_b, self.ledger,
@@ -165,6 +167,7 @@ class NegotiationCrew:
             )
             med_output = self._run_single_agent(med_task)
             parsed = parse_ledger_update(med_output, self.ledger)
+            mediator_instruction = extract_mediator_instruction(med_output)
             self._log(f"MEDIATOR ({self.scenario['mediator_name']})", med_output)
 
         # ── Max turns hit with no settlement ──────────────────
