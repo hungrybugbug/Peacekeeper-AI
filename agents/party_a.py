@@ -1,6 +1,6 @@
 # agents/party_a.py
 from crewai import Agent
-from config import get_party_llm
+# from config import get_party_llm
 from config import get_party_a_llm
 
 def create_party_a(name: str, position: str, goals: list[str], red_lines: list[str]) -> Agent:

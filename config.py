@@ -5,7 +5,7 @@ from crewai import LLM
 import time
 load_dotenv()
 
-MAX_TURNS = 5
+MAX_TURNS = 3
 DEADLOCK_THRESHOLD = 2
 INTER_CALL_DELAY = 15
 
@@ -38,7 +38,7 @@ def get_party_b_llm() -> LLM:
     if not api_key:
         raise ValueError("GEMINI_API_KEY not found in .env")
     return LLM(
-        model="gemini-2.5-flash",
+        model="gemini/gemini-2.5-flash",
         api_key=api_key,
         temperature=0.8,
     )
