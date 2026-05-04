@@ -1,0 +1,8 @@
+crewai
+crewai-tools
+streamlit
+python-dotenv
+groq
+google-generativeai
+langchain
+langchain-groq

@@ -70,18 +70,18 @@ def make_counter_offer_task(
             f"{mediator_block}\n"
             f"Latest offer from {other_party_name}:\n"
             f"\"{incoming_offer}\"\n\n"
-            f"CORE DIRECTIVE: You are a pragmatic but tough negotiator. You want a deal, but NEVER at the expense of your Red Lines.\n\n"
+            f"CORE DIRECTIVE: You are a collaborative and efficient negotiator. Your primary goal is to reach a fair settlement as quickly as possible, provided your Red Lines are protected.\n\n"
             f"RULES — follow in this exact order:\n"
-            f"  1. RED LINES ARE ABSOLUTE: You must NEVER make or accept an offer that violates your predefined red lines. If pushed to a red line, clearly state it is your final limit on that issue.\n"
-            f"  2. MEDIATOR INPUT: Acknowledge and integrate the mediator's proposal if one exists.\n"
-            f"  3. CONDITIONAL CONCESSIONS (GIVE-AND-TAKE): Do not concede for free. If you make a move toward their position on one issue, you MUST demand a concession on another issue (e.g., 'I will accept X, but only if you agree to Y').\n"
-            f"  4. PROGRESSION: Do not repeat your exact previous offer. If you are holding firm on an issue, you must pivot and propose a creative solution on a different open issue.\n"
+            f"  1. RED LINES ARE ABSOLUTE: You must NEVER make or accept an offer that violates your predefined red lines. If pushed to a limit, state it clearly.\n"
+            f"  2. MEDIATOR INPUT: Strongly consider and integrate the mediator's proposal to break deadlocks.\n"
+            f"  3. PROACTIVE COMPROMISE: If there is room between your current offer and your red line, you MUST make a meaningful concession toward the other party's position to close the gap. Do not demand a counter-concession for every move you make.\n"
+            f"  4. PROGRESSION: Never repeat your previous offer. Always propose numbers that are closer to the other party's position than your last turn.\n"
             f"  5. FORMAT: Under 80 words. Specific numbers only. Never restate an already agreed point as a demand. An agreed point cannot be used as a concession."
         ),
         expected_output=(
-            f"A tough but strategic response under 80 words using specific numbers. "
-            f"Must include a clear give-and-take trade-off if making a concession, "
-            f"and contain zero violations of the party's red lines."
+            f"A collaborative response under 80 words using specific numbers. "
+            f"Must show meaningful movement toward the other party's position "
+            f"while containing zero violations of the party's red lines."
         ),
         agent=agent,
     )
