@@ -42,11 +42,15 @@ class AgreementLedger:
         """Mediator calls this when both sides accept something."""
         if point not in self.agreed_points:
             self.agreed_points.append(point)
-            # Remove from open issues if it's there
-            self.open_issues = [
-                i for i in self.open_issues
-                if i.lower() not in point.lower()
-            ]
+            # Remove from open issues if the agreed point addresses it
+            # Check if there's word overlap between the open issue and agreed point
+            new_open_issues = []
+            for i in self.open_issues:
+                open_words = set(i.lower().split())
+                agreed_words = set(point.lower().split())
+                if not (open_words & agreed_words):  # No common words, keep it
+                    new_open_issues.append(i)
+            self.open_issues = new_open_issues
 
     def to_compact_context(self) -> str:
         """

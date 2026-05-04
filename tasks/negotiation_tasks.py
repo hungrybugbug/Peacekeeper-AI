@@ -70,18 +70,18 @@ def make_counter_offer_task(
             f"{mediator_block}\n"
             f"Latest offer from {other_party_name}:\n"
             f"\"{incoming_offer}\"\n\n"
+            f"CORE DIRECTIVE: You are a pragmatic but tough negotiator. You want a deal, but NEVER at the expense of your Red Lines.\n\n"
             f"RULES — follow in this exact order:\n"
-            f"  1. Acknowledge mediator proposal if one exists\n"
-            f"  2. Accept any point you can genuinely concede\n"
-            f"  3. On disputed points — you must make a concession to advance the deal.\n"
-            f"     You can hold firm on ONE issue only if you make a major move toward the\n"
-            f"     other party on another issue. NEVER move backwards (away from their position).\n"
-            f"  4. Never restate an already agreed point as a demand\n"
-            f"  5. Under 80 words. Specific numbers only — no vague language."
+            f"  1. RED LINES ARE ABSOLUTE: You must NEVER make or accept an offer that violates your predefined red lines. If pushed to a red line, clearly state it is your final limit on that issue.\n"
+            f"  2. MEDIATOR INPUT: Acknowledge and integrate the mediator's proposal if one exists.\n"
+            f"  3. CONDITIONAL CONCESSIONS (GIVE-AND-TAKE): Do not concede for free. If you make a move toward their position on one issue, you MUST demand a concession on another issue (e.g., 'I will accept X, but only if you agree to Y').\n"
+            f"  4. PROGRESSION: Do not repeat your exact previous offer. If you are holding firm on an issue, you must pivot and propose a creative solution on a different open issue.\n"
+            f"  5. FORMAT: Under 80 words. Specific numbers only. Never restate an already agreed point as a demand. An agreed point cannot be used as a concession."
         ),
         expected_output=(
-            f"A response under 80 words with specific numbers showing "
-            f"movement toward settlement. No restating of agreed points."
+            f"A tough but strategic response under 80 words using specific numbers. "
+            f"Must include a clear give-and-take trade-off if making a concession, "
+            f"and contain zero violations of the party's red lines."
         ),
         agent=agent,
     )
@@ -174,3 +174,46 @@ def final_report_task(agent: Agent, ledger: AgreementLedger) -> Task:
         ),
         agent=agent,
     )
+    
+def make_compliant_rerun_task(
+    agent: Agent,
+    ledger: AgreementLedger,
+    party_name: str,
+    other_party_name: str,
+    original_offer: str,
+    violated_red_line: str,
+    human_instruction: str,
+) -> Task:
+    """
+    Forces the agent to rerun after a red line violation.
+    Unlike the normal counter offer task, this one uses
+    mandatory compliance language — the agent MUST follow
+    the human instruction, not just acknowledge it.
+    """
+    return Task(
+        description=(
+            f"You are negotiating on behalf of {party_name}.\n"
+            f"{ledger.to_compact_context()}\n\n"
+            f"Your previous offer was flagged for review:\n"
+            f"\"{original_offer}\"\n\n"
+            f"Issue identified:\n\"{violated_red_line}\"\n\n"
+            f"INSTRUCTION FROM YOUR PRINCIPAL (highest authority):\n"
+            f"\"{human_instruction}\"\n\n"
+            f"Your principal's instruction is your absolute priority. "
+            f"Follow it exactly — it overrides your default negotiating "
+            f"parameters where they conflict. Your principal has full "
+            f"authority to adjust your position.\n\n"
+            f"Write a revised offer that:\n"
+            f"  1. Follows your principal's instruction to the letter\n"
+            f"  2. Respects red lines that your principal has NOT "
+            f"     authorized you to cross\n"
+            f"  3. Still makes a concrete offer on all open issues\n"
+            f"  4. Does not mention this correction process\n\n"
+            f"Under 80 words. Specific numbers only."
+        ),
+        expected_output=(
+            f"A revised offer from {party_name} that follows the "
+            f"principal's instruction as the top priority. Under 80 words."
+        ),
+        agent=agent,
+    )    

@@ -5,7 +5,7 @@ from crewai import LLM
 import time
 load_dotenv()
 
-MAX_TURNS = 3
+MAX_TURNS = 5
 DEADLOCK_THRESHOLD = 2
 INTER_CALL_DELAY = 15
 

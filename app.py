@@ -22,7 +22,7 @@ st.markdown("""
 <style>
 .chat-bubble {
     padding: 12px 16px; border-radius: 12px;
-    margin: 6px 0; font-size: 14px; line-height: 1.6;
+    margin: 6px 0; font-size: 16px; line-height: 1.7;
     border-left: 4px solid;
 }
 .bubble-a        { background:#0d1f33; border-color:#1f6feb; color:#cdd9e5; }
