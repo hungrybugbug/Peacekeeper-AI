@@ -6,3 +6,4 @@ groq
 google-generativeai
 langchain
 langchain-groq
+crewai[litellm]
