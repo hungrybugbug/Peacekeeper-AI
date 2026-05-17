@@ -1,0 +1,458 @@
+================================================================================
+PROMPTS USED — PEACEKEEPER AI
+AI-Mediated Multi-Agent Negotiation System
+================================================================================
+Course Submission — Agentic AI Project
+Demonstrates: Chain-of-thought prompting, role prompting, structured output
+prompting, few-shot prompting, constraint-based prompting, and iterative
+prompt refinement across all development phases.
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 1 — PROJECT IDEATION AND ARCHITECTURE DESIGN
+────────────────────────────────────────────────────────────────────────────────
+
+PROMPT 1.1 — Initial idea evaluation (Role + Context prompting)
+───────────────────────────────────────────────────────────────
+"You are a senior software engineer and AI systems architect with experience
+building production multi-agent systems. I am a CS student building my first
+agentic AI project using CrewAI. My goal is to learn agent architecture deeply
+and produce something portfolio-worthy.
+
+I have an idea to build a negotiation simulation with three agents: a junior
+developer, a debugger, and a senior reviewer. Evaluate this idea critically.
+Tell me if it is overused, whether it meets my goals, and suggest better
+alternatives that would demonstrate more sophisticated agent architecture while
+remaining buildable for a first project."
+
+WHY THIS WORKS: Assigning the senior engineer role grounds the response in
+practical industry knowledge rather than generic advice. Explicitly stating
+student context and dual goals (learning + portfolio) prevents overly complex
+or overly simple suggestions.
+
+
+PROMPT 1.2 — Architecture design (Structured output + Constraint prompting)
+────────────────────────────────────────────────────────────────────────────
+"Design a multi-agent negotiation system with the following constraints:
+- Framework: CrewAI
+- LLM providers: Groq API (free tier) with Google Gemini as secondary
+- Must solve the hallucinated consensus problem common in P2P agent loops
+- Must have a centralized state management mechanism
+- Three agents: Party A, Party B, and a Mediator
+
+For the architecture, explain:
+1. Why a hub-and-spoke topology is better than peer-to-peer for this use case
+2. What the Mediator agent needs in its system prompt to prevent circular logic
+3. How shared state should be structured and who owns it
+4. What happens when agents deadlock
+
+Output the architecture as a component diagram description and a data flow
+explanation. Be specific about what each component does, not just that it
+exists."
+
+WHY THIS WORKS: Constraint-based prompting prevents hallucinated suggestions
+(no paid APIs, specific framework). Asking for "why" forces reasoning not just
+description. Requesting specific component responsibilities prevents vague
+architecture hand-waving.
+
+
+PROMPT 1.3 — Agreement Ledger design (Chain-of-thought prompting)
+──────────────────────────────────────────────────────────────────
+"I need to design a shared state object called the Agreement Ledger for a
+multi-agent negotiation system. Think through this step by step.
+
+Step 1: What information must persist across negotiation turns to prevent
+agents from contradicting previously agreed points?
+
+Step 2: What events during a negotiation should trigger a state update, and
+which agent should have write access?
+
+Step 3: How should this state be serialized so it can be injected into an
+LLM prompt without exceeding token limits?
+
+Step 4: What does a deadlock look like in state terms, and how should the
+ledger represent it?
+
+After reasoning through each step, give me a Python dataclass implementation
+with methods for: recording offers, adding agreed points, detecting deadlock,
+and generating a compact context string for prompt injection."
+
+WHY THIS WORKS: Chain-of-thought structure forces the model to reason through
+design decisions before writing code, producing better-justified architecture.
+Asking for reasoning first and code second prevents premature implementation.
+
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 2 — AGENT DEFINITION
+────────────────────────────────────────────────────────────────────────────────
+
+PROMPT 2.1 — Mediator agent system prompt (Role + Few-shot prompting)
+──────────────────────────────────────────────────────────────────────
+"Write a system prompt for an AI mediator agent in a negotiation simulation.
+The mediator must embody real negotiation frameworks used by professional
+diplomats and mediators. Include the following frameworks with specific
+behavioral rules for each:
+
+1. Harvard Principled Negotiation — focus on interests not positions
+2. ZOPA (Zone of Possible Agreement) — always map the overlap range
+3. BATNA awareness — help parties understand their alternatives
+4. Deadlock breaking toolkit — reframing, issue trading, contingent agreements
+
+For each framework, give a concrete example of how the mediator should apply
+it in a diplomatic negotiation scenario.
+
+The mediator must also follow these non-negotiable operational rules:
+- Strip emotional language from all offers before passing them between parties
+- Always find one point of agreement before naming the impasse
+- Declare deadlock after 2 turns of repeated positions — never avoid it
+- End every response with a structured update block the system can parse
+
+Write this as a CrewAI agent backstory parameter."
+
+WHY THIS WORKS: Grounding the agent in real-world named frameworks (Harvard,
+ZOPA, BATNA) rather than vague instructions like "be a good mediator" produces
+substantially more consistent and realistic agent behavior. Few-shot examples
+for each framework prevent abstract interpretation.
+
+
+PROMPT 2.2 — Party agent design (Constraint + Persona prompting)
+─────────────────────────────────────────────────────────────────
+"Design a negotiating party agent for a multi-agent simulation. The agent
+must behave like a real diplomatic negotiator, not a helpful AI assistant.
+
+Key behavioral requirements:
+- Treat stated goals as opening positions, not hard limits
+- Red lines are the only true non-negotiables
+- Never move backwards on a position (if you offered X, next offer must
+  be between X and the other party's position)
+- When the mediator proposes a trade-off, explicitly acknowledge it and
+  either accept, modify, or reject with a specific reason — never ignore it
+- Show reciprocity: if the other party has not moved, hold firm rather
+  than continuing to concede unilaterally
+
+The agent must be parameterized so the same code works for any negotiation
+scenario — name, goals, and red lines passed at runtime, not hardcoded.
+
+Write this as a CrewAI agent factory function in Python."
+
+WHY THIS WORKS: Explicitly forbidding helpful-AI behavior ("not a helpful
+AI assistant") is critical for negotiation agents because LLMs default to
+agreeableness. The specific behavioral rules translate directly into the
+agent backstory and prevent the most common negotiation simulation failures.
+
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 3 — TASK DESIGN
+────────────────────────────────────────────────────────────────────────────────
+
+PROMPT 3.1 — Structured output task design (Format specification prompting)
+────────────────────────────────────────────────────────────────────────────
+"Design a CrewAI task for a mediator agent that must produce a structured
+output parseable by a Python script. The task runs after both negotiating
+parties have spoken and must produce:
+
+1. A natural language mediation summary (emotional scrubbing, gap analysis)
+2. A machine-parseable update block at the end in this exact format:
+
+---LEDGER UPDATE---
+NEW_AGREEMENT: <agreed point or NONE>
+DEADLOCK: <YES or NO>
+TRADE_OFF: <trade-off text or NONE>
+SETTLEMENT: <YES or NO>
+SANITIZED_A: <sanitized Party A offer>
+SANITIZED_B: <sanitized Party B offer>
+---END UPDATE---
+
+The task description must instruct the mediator to always produce this block,
+explain what each field means, and specify that DEADLOCK must be YES if
+either party repeated the same numeric position from the previous turn.
+
+Include a tiered deadlock rule: before turn 3, DEADLOCK must always be NO.
+After turn 3, check for actual position repetition. At threshold 2, force
+YES and require a trade-off proposal."
+
+WHY THIS WORKS: Explicit format specification with delimiters (--- markers)
+makes the output reliably parseable. Tiered rules for deadlock prevent the
+common failure of the mediator declaring deadlock on turn 1 before parties
+have had time to negotiate.
+
+
+PROMPT 3.2 — Mandatory compliance task (Authority prompting)
+─────────────────────────────────────────────────────────────
+"Write a CrewAI task for a negotiating party agent that forces it to revise
+a rejected offer. The previous offer was rejected because it violated the
+agent's red lines. A human principal has issued a correction instruction.
+
+The task must convey that:
+1. The human instruction comes from the agent's principal — the highest
+   authority they represent
+2. The instruction overrides default negotiating parameters where they conflict
+3. Non-compliance means the negotiation ends immediately with no deal
+4. The agent must not mention that their previous offer was rejected
+
+This is different from a normal mediator suggestion which the agent can
+acknowledge and ignore. This instruction must be followed exactly.
+
+Write the task description and expected output for CrewAI."
+
+WHY THIS WORKS: Standard mediator suggestion prompts fail because LLMs are
+trained to consider suggestions, not obey orders. Using authority framing
+("principal", "highest authority", "non-compliance ends the negotiation")
+produces substantially higher instruction-following rates in agent reruns.
+
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 4 — CREW ORCHESTRATION AND STATE MANAGEMENT
+────────────────────────────────────────────────────────────────────────────────
+
+PROMPT 4.1 — Negotiation loop design (System design prompting)
+──────────────────────────────────────────────────────────────
+"Design the main negotiation loop for a CrewAI multi-agent system. The loop
+must handle these cases without crashing:
+
+1. Normal turn: Party A speaks, Party B responds, Mediator processes
+2. Deadlock detected: pause for human input before continuing
+3. Red line violation: validate offer, get human instruction, rerun agent
+4. Rate limit hit: exponential backoff with jitter, retry up to 4 times
+5. Settlement reached: exit loop early and generate final report
+6. Max turns exceeded: mark as failed and generate failure report
+
+State management rules:
+- Party B must always receive Party A's offer from the CURRENT turn,
+  never the previous turn (lag bug prevention)
+- The ledger is the single source of truth — never use LLM memory for state
+- Each LLM call must use a fresh Crew object to prevent state contamination
+
+Write this as a Python class with a run() method. Show the full turn
+structure with proper state updates after each agent call."
+
+WHY THIS WORKS: Listing all edge cases explicitly in the prompt forces the
+model to handle them in the implementation rather than producing a happy-path
+only solution. The state management rules directly address the most common
+multi-agent orchestration bugs.
+
+
+PROMPT 4.2 — Red line validator design (Isolated system prompting)
+──────────────────────────────────────────────────────────────────
+"Design an LLM-based red line compliance checker that runs completely outside
+the CrewAI framework. It must:
+
+1. Use a small, fast model (llama-3.1-8b-instant) for cost efficiency
+2. Run at temperature 0.0 for deterministic output
+3. Return structured JSON only — no preamble, no markdown fences
+4. Distinguish between hard violations (explicit numeric breach) and soft
+   violations (ambiguous or implied pressure)
+5. Never flag a violation based on inference chains — only explicit statements
+6. If the explanation contains hedging words (implies, suggests, could, might)
+   the severity cannot be HARD
+
+Include these anti-hallucination rules in the prompt:
+- Only flag if the offer explicitly states something contradicting the red line
+- For numeric red lines, a violation requires an explicit number in the offer
+  that breaches the stated limit
+- When in doubt, output violation: false
+
+Provide 3 examples of what IS a violation and 3 examples of what is NOT,
+covering numeric red lines and non-numeric red lines.
+
+Write the complete validator function including JSON parsing, error handling,
+and a post-parse self-consistency check."
+
+WHY THIS WORKS: Providing both positive and negative examples (few-shot)
+dramatically reduces false positives in classification tasks. Explicit
+anti-hallucination rules and the self-consistency check (hedging words
+cannot appear in a HARD violation explanation) address the specific failure
+modes observed during testing.
+
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 5 — STREAMLIT FRONTEND
+────────────────────────────────────────────────────────────────────────────────
+
+PROMPT 5.1 — Live streaming UI design (Technical architecture prompting)
+─────────────────────────────────────────────────────────────────────────
+"Build a Streamlit application that displays a multi-agent negotiation in
+real time as agents produce their outputs, not as a batch at the end.
+
+Technical constraints:
+- The negotiation runs in a background thread (cannot block the UI)
+- Streamlit reruns the entire script on each interaction — no true streaming
+- Use a queue.Queue for thread-to-UI communication
+- Use time.sleep(1) + st.rerun() to poll the queue every second
+
+The UI must have:
+- Left panel: live transcript with color-coded chat bubbles per speaker
+- Right panel: Agreement Ledger that updates after each mediator turn
+- Status bar showing which agent is currently thinking
+- Human-in-the-loop panel that pauses the negotiation for input
+
+The HITL panel must use a two-queue system:
+- event_queue: negotiation thread → UI (sends HITL requests)
+- response_queue: UI → negotiation thread (sends human decisions)
+- The negotiation thread blocks on response_queue.get() during HITL
+- The UI renders and accepts input while the thread waits
+
+Show the complete app.py with session state initialization, queue polling,
+transcript rendering, and the HITL panel implementation."
+
+WHY THIS WORKS: Explicitly describing the threading model and Streamlit's
+rerun behavior prevents the model from suggesting impossible approaches like
+true streaming in Streamlit. The two-queue architecture specification produces
+a working HITL implementation rather than a mock.
+
+
+PROMPT 5.2 — HITL panel design (User experience prompting)
+───────────────────────────────────────────────────────────
+"Design a human-in-the-loop intervention panel for a Streamlit negotiation
+app. The panel appears when either a deadlock is detected or a red line is
+violated. It must:
+
+1. Clearly explain what triggered the intervention (deadlock vs red line)
+2. Show the full context: what was agreed, what is disputed, what was said
+3. Provide 4-5 pre-written suggested interventions as radio buttons
+4. Allow the human to write a completely custom instruction instead
+5. Include a 'FALSE POSITIVE — ignore this alert' option as the first choice
+   so humans can dismiss validator hallucinations without disrupting the flow
+6. Have a prominent 'Submit and Resume' button that unblocks the thread
+
+The false positive option must return the original offer unchanged with no
+agent rerun. The allow-exception option must pass the offer through with a
+system log note. The hold-firm option must trigger a mandatory compliance
+rerun with the human instruction as the highest authority directive.
+
+Style it distinctly from the rest of the UI so it is immediately obvious
+that human attention is required."
+
+WHY THIS WORKS: Specifying the exact behavior of each option prevents
+ambiguous implementations. Including the false positive option requirement
+directly in the prompt ensures the edge case is handled in the first
+implementation rather than discovered during testing.
+
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 6 — DEBUGGING AND ITERATIVE REFINEMENT
+────────────────────────────────────────────────────────────────────────────────
+
+PROMPT 6.1 — Diagnosing negotiation failures (Analytical prompting)
+─────────────────────────────────────────────────────────────────────
+"Analyze this negotiation log and identify the root causes of the following
+observed failures:
+
+1. Agents are making offers that are worse than their previous offers
+   (negotiating in reverse)
+2. The mediator is not declaring deadlock even when both parties have
+   repeated identical positions for 3 turns
+3. Party B is responding to Party A's offer from the previous turn, not
+   the current turn
+
+For each failure, identify:
+a) The exact line of code or prompt instruction causing it
+b) Whether it is a prompt engineering problem, a state management bug,
+   or an architectural flaw
+c) A specific fix with before/after code
+
+Do not suggest general improvements — diagnose these specific failures only."
+
+WHY THIS WORKS: Asking for diagnosis of specific observed failures rather
+than general code review produces actionable fixes. Specifying the three
+categories (prompt, state management, architectural) forces precise
+attribution rather than vague suggestions.
+
+
+PROMPT 6.2 — Model diversity strategy (Technical decision prompting)
+─────────────────────────────────────────────────────────────────────
+"I am building a multi-agent negotiation system where all agents currently
+use the same LLM (llama-3.1-8b-instant on Groq). I want to introduce model
+diversity to reduce the echo chamber effect where agents share biases.
+
+Evaluate this proposed model assignment:
+- Party A: Groq llama-3.1-70b-versatile, temperature 0.85
+- Party B: Google Gemini 2.0 Flash via AI Studio, temperature 0.85
+- Mediator: Groq llama-3.3-70b-versatile, temperature 0.35
+
+For each assignment explain:
+1. Why this model fits this role (architecture, size, provider differences)
+2. What the temperature setting achieves for this specific agent's behavior
+3. What failure modes this assignment might introduce
+
+Also explain why the mediator should have lower temperature than the
+negotiating parties and what happens if it is set too high."
+
+WHY THIS WORKS: Asking for evaluation of a specific proposal rather than
+open-ended model selection produces focused analysis. Requesting failure
+mode analysis alongside justification prevents overconfident recommendations.
+
+
+────────────────────────────────────────────────────────────────────────────────
+PHASE 7 — DEPLOYMENT
+────────────────────────────────────────────────────────────────────────────────
+
+PROMPT 7.1 — Production deployment checklist (Structured checklist prompting)
+───────────────────────────────────────────────────────────────────────────────
+"Generate a deployment checklist for a Streamlit multi-agent AI application
+being deployed to DigitalOcean App Platform with a custom .tech domain.
+
+The checklist must cover:
+1. Repository preparation (what files must exist, what must never be committed)
+2. Environment variable configuration (which variables, how to mark encrypted)
+3. Run command specification for Streamlit on DigitalOcean's port 8080
+4. DNS configuration for connecting a .tech domain using CNAME records
+5. Post-deployment verification steps
+
+For each item, explain what breaks if it is skipped. Format as a checklist
+with explicit pass/fail criteria for each item."
+
+WHY THIS WORKS: Asking for failure consequences alongside each checklist
+item forces the model to include only genuinely critical items. Explicit
+pass/fail criteria make verification objective rather than subjective.
+
+
+================================================================================
+PROMPT ENGINEERING TECHNIQUES DEMONSTRATED
+================================================================================
+
+1. ROLE PROMPTING
+   Assigning specific expert personas (senior engineer, diplomat, architect)
+   grounds responses in domain knowledge rather than generic LLM output.
+   Used in: 1.1, 2.1, 2.2
+
+2. CHAIN-OF-THOUGHT PROMPTING
+   Breaking complex design tasks into explicit reasoning steps before
+   requesting implementation prevents premature and poorly-justified code.
+   Used in: 1.3, 4.1
+
+3. CONSTRAINT-BASED PROMPTING
+   Specifying hard constraints (free tier only, specific framework, no
+   inference chains) prevents suggestions that cannot be implemented.
+   Used in: 1.2, 2.1, 4.2
+
+4. FEW-SHOT PROMPTING
+   Providing explicit positive and negative examples for classification
+   tasks dramatically reduces false positives in the red line validator.
+   Used in: 4.2, 6.2
+
+5. STRUCTURED OUTPUT PROMPTING
+   Specifying exact output format with delimiters ensures machine-parseable
+   responses from LLM agents, enabling reliable state management.
+   Used in: 3.1, 7.1
+
+6. ITERATIVE REFINEMENT PROMPTING
+   Diagnosing specific observed failures rather than requesting general
+   improvements produces targeted fixes for real bugs.
+   Used in: 6.1
+
+7. AUTHORITY FRAMING PROMPTING
+   Using principal/authority language for mandatory compliance tasks produces
+   higher instruction-following rates than suggestion-based prompting.
+   Used in: 3.2
+
+8. ANTI-HALLUCINATION PROMPTING
+   Explicit rules forbidding inference chains, requiring explicit evidence,
+   and including self-consistency checks reduce LLM false positives in
+   classification and validation tasks.
+   Used in: 4.2, 6.1
+
+================================================================================
+END OF PROMPTS DOCUMENT
+================================================================================

@@ -1,7 +1,12 @@
 # agents/party_a.py
+import os
 from crewai import Agent
-# from config import get_party_llm
 from config import get_party_a_llm
+
+
+def _agent_verbose() -> bool:
+    raw = os.getenv("PEACEKEEPER_AGENT_VERBOSE")
+    return raw is None or raw.lower() in {"1", "true", "yes"}
 
 def create_party_a(name: str, position: str, goals: list[str], red_lines: list[str]) -> Agent:
     """
@@ -34,6 +39,6 @@ def create_party_a(name: str, position: str, goals: list[str], red_lines: list[s
             f"with a clear reason. You never ignore it."
         ),
         llm=get_party_a_llm(),
-        verbose=True,
+        verbose=_agent_verbose(),
         allow_delegation=False,
     )

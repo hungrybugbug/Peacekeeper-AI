@@ -16,16 +16,20 @@ from tasks import (
 )
 from utils.parser import parse_ledger_update, extract_mediator_instruction
 from utils.formatter import format_ledger_panel
-from config import MAX_TURNS, INTER_CALL_DELAY
+from config import get_max_turns, get_inter_call_delay_sec
 
 
 class NegotiationCrew:
     def __init__(self, scenario: dict,
                  event_queue: queue.Queue = None,
-                 response_queue: queue.Queue = None):
+                 response_queue: queue.Queue = None,
+                 auto_hitl: bool = False,
+                 experiment_trace: list | None = None):
         self.scenario      = scenario
         self.event_queue   = event_queue    # crew → UI
         self.response_queue = response_queue  # UI → crew
+        self.auto_hitl     = auto_hitl
+        self.experiment_trace = experiment_trace
 
         self.party_a  = create_party_a(
             name      = scenario["party_a"]["name"],
@@ -49,6 +53,18 @@ class NegotiationCrew:
         )
         self.transcript = []
 
+    def _capture_experiment_snapshot(self, label: str):
+        if self.experiment_trace is None:
+            return
+        self.experiment_trace.append({
+            "type": "ledger_snapshot",
+            "label": label,
+            "ledger_turn": self.ledger.turn,
+            "status": self.ledger.status,
+            "deadlock_count": self.ledger.deadlock_count,
+            "agreed_n": len(self.ledger.agreed_points),
+            "open_issues_n": len(self.ledger.open_issues),
+        })
 
     def _emit(self, event_type: str, **kwargs):
         """Send an event to the UI queue."""
@@ -78,6 +94,19 @@ class NegotiationCrew:
         options:  suggested actions the human can choose or override
         Returns the human's instruction string.
         """
+        if self.auto_hitl:
+            pick = options[0] if options else (
+                "Proceed with the mediator's next structured trade-off proposal."
+            )
+            if self.experiment_trace is not None:
+                self.experiment_trace.append({
+                    "type": "auto_hitl",
+                    "trigger": trigger,
+                    "chosen": pick,
+                })
+            print(f"[AUTO-HITL] trigger={trigger} -> {pick[:80]}...")
+            return pick
+
         self._emit(
             "human_input_required",
             trigger = trigger,
@@ -306,7 +335,9 @@ class NegotiationCrew:
                     verbose = False,
                 )
                 result = crew.kickoff()
-                time.sleep(INTER_CALL_DELAY)
+                delay = get_inter_call_delay_sec()
+                if delay > 0:
+                    time.sleep(delay)
                 return str(result)
             except Exception as e:
                 err = str(e).lower()
@@ -328,6 +359,7 @@ class NegotiationCrew:
 
 
     def run(self) -> dict:
+        max_turns = get_max_turns()
         party_a_name = self.scenario["party_a"]["name"]
         party_b_name = self.scenario["party_b"]["name"]
         mediator_instruction = None
@@ -363,9 +395,10 @@ class NegotiationCrew:
         parse_ledger_update(med_output, self.ledger)
         mediator_instruction = extract_mediator_instruction(med_output)
         self._log(f"Mediator ({self.scenario['mediator_name']})", med_output)
+        self._capture_experiment_snapshot("after_mediator_turn1")
 
-        # ── Turns 2 → MAX_TURNS ────────────────────────────────
-        for turn in range(2, MAX_TURNS + 1):
+        # ── Turns 2 → max_turns ────────────────────────────────
+        for turn in range(2, max_turns + 1):
 
             if self.ledger.status == "settled":
                 self._emit("status", text="Settlement reached!")
@@ -522,11 +555,12 @@ class NegotiationCrew:
             self._log(
                 f"Mediator ({self.scenario['mediator_name']})", med_output
             )
+            self._capture_experiment_snapshot(f"after_mediator_turn{turn}")
 
         else:
             if self.ledger.status == "in_progress":
                 self.ledger.fail()
-                self._emit("status", text=f"Max turns ({MAX_TURNS}) reached.")
+                self._emit("status", text=f"Max turns ({max_turns}) reached.")
 
         # ── Final report ───────────────────────────────────────
         self._emit("status", text="Generating final report...")

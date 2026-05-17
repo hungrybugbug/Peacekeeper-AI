@@ -1,0 +1,6 @@
+T_max=3	Cfg1_AllCooperative	rho=0.583	mean_turns=5.333	mean_agreed=2.417	mean_diag_units=8.0
+T_max=3	Cfg4_AllStubborn	rho=0.000	mean_turns=6.000	mean_agreed=0.333	mean_diag_units=9.3
+T_max=5	Cfg1_AllCooperative	rho=0.750	mean_turns=7.167	mean_agreed=2.333	mean_diag_units=10.8
+T_max=5	Cfg4_AllStubborn	rho=0.333	mean_turns=9.333	mean_agreed=1.333	mean_diag_units=15.4
+T_max=7	Cfg1_AllCooperative	rho=1.000	mean_turns=6.000	mean_agreed=3.000	mean_diag_units=9.0
+T_max=7	Cfg4_AllStubborn	rho=0.000	mean_turns=14.000	mean_agreed=0.333	mean_diag_units=22.7

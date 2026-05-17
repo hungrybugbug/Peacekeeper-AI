@@ -1,6 +1,12 @@
 # agents/mediator.py
+import os
 from crewai import Agent
 from config import get_mediator_llm
+
+
+def _agent_verbose() -> bool:
+    raw = os.getenv("PEACEKEEPER_AGENT_VERBOSE")
+    return raw is None or raw.lower() in {"1", "true", "yes"}
 
 
 def create_mediator(name: str = "The Mediator") -> Agent:
@@ -64,6 +70,6 @@ def create_mediator(name: str = "The Mediator") -> Agent:
             "  5. Never take sides — your loyalty is to the process, not a party"
         ),
         llm=get_mediator_llm(),
-        verbose=True,
+        verbose=_agent_verbose(),
         allow_delegation=False,
     )

@@ -14,6 +14,143 @@ def _get_client() -> Groq:
     return _client
 
 
+def _mock_check_red_lines(offer: str, red_lines: list[str]) -> dict:
+    """
+    Lightweight rule-based checker for offline experiments (no Groq calls).
+    Conservative: prefers false negatives over blocking runs.
+    """
+    offer_lower = offer.lower()
+
+    for red_line in red_lines:
+        red_lower = red_line.lower()
+
+        above_match = re.search(
+            r"(?:above|exceed|more than|higher than)\s*(\d+\.?\d*)\s*%",
+            red_lower,
+        )
+        below_match = re.search(
+            r"(?:below|under|less than|lower than)\s*(\d+\.?\d*)\s*%",
+            red_lower,
+        )
+        offer_nums = [
+            float(p)
+            for p in re.findall(r"(\d+\.?\d*)\s*%", offer_lower)
+        ]
+
+        money_red = re.search(
+            r"\$([\d,.]+)\s*[mMbB]",
+            red_lower.replace(",", ""),
+        )
+        offer_money = re.findall(r"\$\s*([\d,.]+)\s*[mMbB]", offer_lower.replace(",", ""))
+
+        if above_match and offer_nums:
+            threshold = float(above_match.group(1))
+            if any(p > threshold for p in offer_nums):
+                return {
+                    "violation": True,
+                    "violated_red_line": red_line,
+                    "explanation": (
+                        "Offer states a percentage above the declared maximum "
+                        "in the red line."
+                    ),
+                    "severity": "hard",
+                }
+
+        if below_match and offer_nums:
+            threshold = float(below_match.group(1))
+            if any(p < threshold for p in offer_nums):
+                return {
+                    "violation": True,
+                    "violated_red_line": red_line,
+                    "explanation": (
+                        "Offer states a percentage below the declared minimum."
+                    ),
+                    "severity": "hard",
+                }
+
+        if money_red and offer_money:
+            threshold_raw = money_red.group(1).replace(",", "")
+            threshold = float(threshold_raw)
+
+            def _parse_m(s: str) -> float:
+
+                return float(s.replace(",", ""))
+
+            vals = [_parse_m(m) for m in offer_money]
+            if "below" in red_lower or "not sell below" in red_lower:
+
+                if any(v < threshold for v in vals):
+                    return {
+                        "violation": True,
+                        "violated_red_line": red_line,
+                        "explanation": (
+                            "Offer proposes a valuation below the minimum."
+                        ),
+                        "severity": "hard",
+                    }
+            if "above" in red_lower or "not pay above" in red_lower or (
+                "will not pay above" in red_lower
+            ):
+                if any(v > threshold for v in vals):
+                    return {
+                        "violation": True,
+                        "violated_red_line": red_line,
+                        "explanation": (
+                            "Offer proposes consideration above stated cap."
+                        ),
+                        "severity": "hard",
+                    }
+
+        key_terms = [
+            w
+            for w in red_lower.split()
+            if len(w) > 5
+            and w
+            not in {
+                "accept",
+                "above",
+                "below",
+                "never",
+                "under",
+                "framing",
+                "condition",
+                "cannot",
+                "will",
+                "must",
+                "agree",
+                "allow",
+                "permit",
+            }
+        ]
+        if len(key_terms) >= 2:
+
+            hits = sum(1 for t in key_terms if t in offer_lower)
+            explicit_phrases = (
+                "unannounced inspections",
+                "zero enrichment",
+                "immediate post-acquisition layoffs",
+                "earn-out longer than 2 years",
+            )
+            for phrase in explicit_phrases:
+
+                if phrase in red_lower and phrase in offer_lower:
+                    hits += 3
+            if hits >= 4:
+                return {
+                    "violation": True,
+                    "violated_red_line": red_line,
+                    "explanation": "Offer language closely mirrors a barred concept.",
+                    "severity": "soft",
+                }
+
+    return {
+        "violation": False,
+        "violated_red_line": None,
+        "explanation": "No explicit numeric or keyword breach detected.",
+        "severity": "none",
+    }
+
+
 def check_red_lines(
     offer: str,
     party_name: str,
@@ -33,6 +170,10 @@ def check_red_lines(
     soft  = ambiguous, borderline, or implicit pressure on a red line
     none  = no violation
     """
+    mock_flag = (os.getenv("PEACEKEEPER_MOCK_REDLINES") or "").lower()
+    if mock_flag in {"1", "true", "yes", "mock"}:
+        return _mock_check_red_lines(offer, red_lines)
+
     red_lines_text = "\n".join(f"  - {r}" for r in red_lines)
 
     prompt = f"""You are a red line compliance checker for diplomatic negotiations.

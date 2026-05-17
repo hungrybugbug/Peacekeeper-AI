@@ -1,0 +1,5 @@
+config	mean_settled	mean_agreed_n	mean_hitl	mean_deadlocks
+Cfg1_AllCooperative	0.750	2.083	0.000	0.000
+Cfg2_AllBalanced	0.583	1.667	0.000	0.000
+Cfg3_CoopVsStubborn	0.583	1.750	0.000	0.000
+Cfg4_AllStubborn	0.250	1.167	1.417	1.000
