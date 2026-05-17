@@ -7,5 +7,5 @@ google-generativeai
 langchain
 langchain-groq
 crewai[litellm]
-
+crewai[google-genai]
 matplotlib

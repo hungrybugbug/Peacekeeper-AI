@@ -43,3 +43,5 @@ Thumbs.db
 # Output files
 output*.txt
 *.log
+prompts.txt
+output_cleaner.py
